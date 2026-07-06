@@ -292,7 +292,7 @@ It's not clear if this situation will ever be resolvable, but that is the hope.
 ## Extra Voices for Bark, Prompt Samples
 <div align="center">
 
-[![PromptEcho](https://github.com/user-attachments/assets/d26f76e9-0edf-43b9-b958-1167a867b781)](https://promptecho.com/)
+[![PromptEcho](https://github.com/user-attachments/assets/d26f76e9-0edf-43b9-b958-1167a867b781)](https://ttswebui.com/promptecho/)
 
 [![Bark Speaker Directory](https://github.com/user-attachments/assets/775bd2fe-cf69-44f3-b77a-427338f77848)](https://rsxdalv.github.io/bark-speaker-directory/)
 

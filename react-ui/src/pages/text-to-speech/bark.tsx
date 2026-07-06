@@ -54,7 +54,7 @@ export const AudioConversionModelList = () => (
     <ProjectCard
       title="PromptEcho"
       description="A collection of voices for Bark."
-      href="https://promptecho.com/?utm_source=react_ui"
+      href="https://ttswebui.com/promptecho/?utm_source=react_ui"
       target="_blank"
     />
     <ProjectCard

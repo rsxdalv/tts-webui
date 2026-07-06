@@ -58,7 +58,7 @@ export const routes: Route[] = [
             text: "Vocos NPZ",
           },
           {
-            href: "https://promptecho.com/?utm_source=react_ui",
+            href: "https://ttswebui.com/promptecho/?utm_source=react_ui",
             text: (
               <span className="inline-flex items-center">
                 More Voices&nbsp;
