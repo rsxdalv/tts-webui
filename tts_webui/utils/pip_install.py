@@ -1,5 +1,6 @@
 import os
 import re
+import shlex
 import subprocess
 
 from tts_webui.utils.get_torch_command import get_torch_command
@@ -109,7 +110,7 @@ def _pip_install(requirements, name):
     #     yield f"Failed to install {name}"
     try:
         print(f"Installing {name} dependencies...")
-        yield from _stream_shell_command(f"pip install {requirements}")
+        yield from _stream_shell_command(["pip", "install"] + shlex.split(requirements))
         print(f"Successfully installed {name} dependencies")
         yield f"Successfully installed {name} dependencies"
         yield "Please restart the webui to see the changes"
@@ -123,7 +124,7 @@ def _pip_install(requirements, name):
 def _pip_uninstall(package_name, name):
     try:
         print(f"Uninstalling {name} ({package_name})...")
-        yield from _stream_shell_command(f"pip uninstall -y {package_name}")
+        yield from _stream_shell_command(["pip", "uninstall", "-y", package_name])
         # yield from _stream_shell_command(f"uv pip uninstall {package_name}")
         print(f"Successfully uninstalled {name} ({package_name})")
         yield f"Successfully uninstalled {name} ({package_name})"
@@ -135,7 +136,7 @@ def _pip_uninstall(package_name, name):
 def _stream_shell_command(command):
     process = subprocess.Popen(
         command,
-        shell=True,
+        shell=isinstance(command, str),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
