@@ -146,6 +146,20 @@
                 "extension_platform_version": "0.0.1"
             },
             {
+                "package_name": "extensions.builtin.extension_orcarouter_cloud_tts",
+                "name": "OrcaRouter Cloud TTS",
+                "requirements": "",
+                "description": "Cloud-based text-to-speech using the OrcaRouter gateway (OpenAI TTS models) behind a single API key",
+                "extension_type": "interface",
+                "extension_class": "text-to-speech",
+                "author": "OrcaRouter",
+                "extension_author": "XiaoHuo888-hue",
+                "license": "MIT",
+                "website": "https://www.orcarouter.ai",
+                "extension_website": "https://github.com/XiaoHuo888-hue/TTS-WebUI",
+                "extension_platform_version": "0.0.1"
+            },
+            {
                 "package_name": "tts_webui_extension.vall_e_x",
                 "recommended": true,
                 "name": "Vall-E-X",
