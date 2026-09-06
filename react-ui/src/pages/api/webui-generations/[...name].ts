@@ -1,4 +1,4 @@
-// pages/api/images/[name].js
+// pages/api/webui-generations/[...name].ts
 
 // Tell Next.js to pass in Node.js HTTP
 export const config = {
@@ -6,17 +6,47 @@ export const config = {
 };
 
 import express from "express";
+import path from "path";
 import { webuiBasePath } from "../../../data/getVoicesData";
+
 const handler = express();
+
 const simpleLogger = (req, res, next) => {
   console.log(req.method, req.url);
   next();
 };
-// add logging middleware
+
 handler.use(simpleLogger);
 
-const serveFiles = express.static(webuiBasePath);
-handler.use(["/api/webui-generations"], simpleLogger, serveFiles);
+// Only generation output directories are served.
+//
+// This previously mounted express.static() on `webuiBasePath`, which is the
+// TTS WebUI project root, exposing config.json, env_store.json, the SQLite
+// database under data/, installer logs and the entire source tree over HTTP
+// with no authentication.
+const SERVED_DIRECTORIES = [
+  "outputs",
+  "favorites",
+  "voices",
+  "collections",
+  "outputs-rvc",
+  "voices-tortoise",
+];
+
+for (const directory of SERVED_DIRECTORIES) {
+  handler.use(
+    `/api/webui-generations/${directory}`,
+    express.static(path.join(webuiBasePath, directory), {
+      dotfiles: "deny",
+      index: false,
+      redirect: false,
+    })
+  );
+}
+
+handler.use(["/api/webui-generations"], (_req, res) => {
+  res.status(404).end();
+});
 
 // express is just a function that takes (http.IncomingMessage, http.ServerResponse),
 // which Next.js supports when externalResolver is enabled.
