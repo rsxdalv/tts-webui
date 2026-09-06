@@ -23,17 +23,29 @@ export default linkExtension;
     return;
   }
 
-  const ttsWebuiPackages = Object.keys(installedPackages).filter((x) =>
-    x.startsWith("@tts-webui")
-  );
+  // This writes a TypeScript source file that is then bundled and executed, so
+  // the package names are validated rather than interpolated blind. A name
+  // containing a quote would otherwise close the module specifier and append
+  // arbitrary statements. src/extensions/package.json is gitignored and written
+  // at install time, so its contents are not necessarily trustworthy.
+  const VALID_PACKAGE = /^@tts-webui\/[a-z0-9][a-z0-9._-]*$/;
+
+  const ttsWebuiPackages = Object.keys(installedPackages).filter((x) => {
+    if (!x.startsWith("@tts-webui")) return false;
+    if (!VALID_PACKAGE.test(x)) {
+      console.warn(`Skipping React UI extension with unsafe name: ${x}`);
+      return false;
+    }
+    return true;
+  });
 
   console.log("Found React UI extensions:", ttsWebuiPackages.join(", "));
 
   const imports = ttsWebuiPackages
-    .map(
-      (x) =>
-        `export { default as ${x.replace("@tts-webui/", "")} } from "${x}";`
-    )
+    .map((x) => {
+      const identifier = x.replace("@tts-webui/", "").replace(/[.-]/g, "_");
+      return `export { default as ${identifier} } from ${JSON.stringify(x)};`;
+    })
     .join("\n");
 
   fs.writeFileSync("./src/extensions/link.ts", imports);
