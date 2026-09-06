@@ -13,11 +13,16 @@ export const uploadFile = async (file?: File) => {
     const data = new FormData();
     data.set("file", file);
 
-    const res = await fetch("/api/upload", { method: "POST", body: data });
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: data,
+      headers: { "x-requested-with": "tts-webui" },
+    });
     // handle the error
     if (!res.ok) throw new Error(await res.text());
-    // return await res.json();
-    return getLocalFileURL(file);
+    // The server sanitises the filename, so use the name it actually wrote.
+    const { name } = await res.json();
+    return "/file-input-cache/" + name;
   } catch (e: any) {
     // Handle errors here
     console.error(e);
@@ -43,8 +48,8 @@ export default function FileInput({
         name="file"
         onChange={async (e) => {
           const file = parseFileEvent(e);
-          await uploadFile(file);
-          callback(getLocalFileURL(file));
+          const url = await uploadFile(file);
+          callback(url);
         }}
         accept={accept}
         style={{
