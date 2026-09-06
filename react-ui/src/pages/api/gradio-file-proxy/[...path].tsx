@@ -51,10 +51,20 @@ export default async function handler(
     const contentLength = response.headers.get("content-length");
     const contentDisposition = response.headers.get("content-disposition");
 
-    // Set appropriate headers for the response
-    if (contentType) {
-      res.setHeader("Content-Type", contentType);
-    }
+    // Do not reflect the upstream Content-Type. This response is served from
+    // the UI's own origin, so an .html file reachable through Gradio's
+    // allowed_paths would otherwise execute as same-origin script.
+    const baseType = (contentType ?? "").split(";")[0].trim().toLowerCase();
+    const isRenderable =
+      /^(audio|image|video)\//.test(baseType) ||
+      baseType === "application/json" ||
+      baseType === "text/plain";
+
+    res.setHeader(
+      "Content-Type",
+      isRenderable ? (contentType as string) : "application/octet-stream"
+    );
+    res.setHeader("X-Content-Type-Options", "nosniff");
     if (contentLength) {
       res.setHeader("Content-Length", contentLength);
     }
