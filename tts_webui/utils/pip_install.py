@@ -5,6 +5,34 @@ import subprocess
 
 from tts_webui.utils.get_torch_command import get_torch_command
 
+_VALID_PACKAGE_NAME = re.compile(r"[A-Za-z0-9._-]+")
+
+
+def _validate_package_name(package_name: str) -> str:
+    """
+    Package names come from extension JSON and are used to build filesystem
+    paths and command arguments, so they must be a single plain segment.
+    """
+    cleaned = str(package_name or "").strip()
+    if not _VALID_PACKAGE_NAME.fullmatch(cleaned) or cleaned.startswith("-"):
+        raise ValueError(f"Invalid package name: {package_name!r}")
+    return cleaned
+
+
+def _split_requirements(requirements: str) -> list:
+    """
+    Split a requirements string into argv, rejecting option-looking tokens.
+
+    Requirements are attacker-influenced (catalog JSON, the installer textbox).
+    Allowing options would let a caller redirect pip at their own index with
+    --index-url or --extra-index-url.
+    """
+    tokens = shlex.split(str(requirements or ""))
+    for token in tokens:
+        if token.startswith("-"):
+            raise ValueError(f"Options are not allowed in requirements: {token!r}")
+    return tokens
+
 
 def write_log(output, name, type):
     script_dir = os.path.dirname((__file__))
@@ -36,7 +64,10 @@ def pip_install_wrapper(requirements, name, include_gradio=True):
 def venv_setup_wrapper(requirements, name, package_name):
     def fn():
         output = []
-        venv = f".venvs/{package_name}"
+        safe_package_name = _validate_package_name(package_name)
+        requirement_args = _split_requirements(requirements)
+
+        venv = os.path.join(".venvs", safe_package_name)
         torch = get_torch_command()
         torchcodec = (
             "torchcodec --index-url=https://download.pytorch.org/whl/cpu"  # safe option
@@ -44,18 +75,19 @@ def venv_setup_wrapper(requirements, name, package_name):
         xformers = "xformers==0.0.35"  # no index-url needed
         compatibility = '"gradio<=5.49.1" "gradio-goodtabs>=0.0.5" "gradio-goodtab>=0.0.5" "gradio-iconbutton>=0.0.1" "ffmpeg-python==0.2.0" "matplotlib"'
         if os.name == "nt":
-            uv_install_cmd = f"uv pip install --python {venv}/Scripts/python.exe"
+            venv_python = os.path.join(venv, "Scripts", "python.exe")
         else:
-            uv_install_cmd = f"uv pip install --python {venv}/bin/python"
+            venv_python = os.path.join(venv, "bin", "python")
+        uv_install_cmd = ["uv", "pip", "install", "--python", venv_python]
         commands = [
-            f"uv venv {venv} --allow-existing",
-            f"{uv_install_cmd} {torch}",
-            f"{uv_install_cmd} {torchcodec}",
-            f"{uv_install_cmd} {xformers}",
-            f"{uv_install_cmd} {requirements} {compatibility}",
+            ["uv", "venv", venv, "--allow-existing"],
+            uv_install_cmd + shlex.split(torch),
+            uv_install_cmd + shlex.split(torchcodec),
+            uv_install_cmd + shlex.split(xformers),
+            uv_install_cmd + requirement_args + shlex.split(compatibility),
         ]
         for cmd in commands:
-            for line in _stream_shell_command(cmd):
+            for line in _stream_command(cmd):
                 output.append(str(line))
                 yield "<br />".join(output)
 
@@ -110,7 +142,7 @@ def _pip_install(requirements, name):
     #     yield f"Failed to install {name}"
     try:
         print(f"Installing {name} dependencies...")
-        yield from _stream_shell_command(["pip", "install"] + shlex.split(requirements))
+        yield from _stream_command(["pip", "install"] + _split_requirements(requirements))
         print(f"Successfully installed {name} dependencies")
         yield f"Successfully installed {name} dependencies"
         yield "Please restart the webui to see the changes"
@@ -124,7 +156,9 @@ def _pip_install(requirements, name):
 def _pip_uninstall(package_name, name):
     try:
         print(f"Uninstalling {name} ({package_name})...")
-        yield from _stream_shell_command(["pip", "uninstall", "-y", package_name])
+        yield from _stream_command(
+            ["pip", "uninstall", "-y", _validate_package_name(package_name)]
+        )
         # yield from _stream_shell_command(f"uv pip uninstall {package_name}")
         print(f"Successfully uninstalled {name} ({package_name})")
         yield f"Successfully uninstalled {name} ({package_name})"
@@ -133,10 +167,12 @@ def _pip_uninstall(package_name, name):
         yield f"Failed to uninstall {name} ({package_name})"
 
 
-def _stream_shell_command(command):
+def _stream_command(command):
+    if isinstance(command, str):
+        raise TypeError("Commands must be passed as an argument list, not a string")
+
     process = subprocess.Popen(
         command,
-        shell=isinstance(command, str),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
