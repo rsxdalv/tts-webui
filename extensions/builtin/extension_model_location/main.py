@@ -90,15 +90,20 @@ def model_location_settings():
                 os.environ["HF_HOME"] = str(model_location_hf_env_var2)
                 os.environ["TORCH_HOME"] = str(model_location_th_home)
                 os.environ["XDG_CACHE_HOME"] = str(model_location_th_xdg)
-                from tts_webui.dotenv_manager.writer import generate_env, write_env
+                from tts_webui.dotenv_manager.writer import update_dotenv
 
-                write_env(
-                    generate_env(
-                        model_location_hf_env_var=model_location_hf_env_var,
-                        model_location_hf_env_var2=model_location_hf_env_var2,
-                        model_location_th_home=model_location_th_home,
-                        model_location_th_xdg=model_location_th_xdg,
-                    )
+                # Merge into the JSON env store rather than regenerating .env
+                # from scratch: write_env(generate_env(...)) replaced the whole
+                # file with just these four variables, discarding every other
+                # stored value including provider API keys.
+                update_dotenv(
+                    "model_location",
+                    {
+                        "HUGGINGFACE_HUB_CACHE": str(model_location_hf_env_var),
+                        "HF_HOME": str(model_location_hf_env_var2),
+                        "TORCH_HOME": str(model_location_th_home),
+                        "XDG_CACHE_HOME": str(model_location_th_xdg),
+                    },
                 )
                 return "saved"
 
