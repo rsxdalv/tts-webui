@@ -1,23 +1,41 @@
-const { exec } = require("child_process");
+const { execFile } = require("child_process");
 
 // Function to open the browser
 function openBrowser(url) {
-  // Determine the command based on the platform
+  // Only ever open plain http(s). Guards against a future caller passing
+  // something else through to the platform opener.
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (error) {
+    console.error(`Refusing to open invalid URL: ${url}`);
+    return;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    console.error(`Refusing to open non-http URL: ${url}`);
+    return;
+  }
+
+  // Determine the command based on the platform. Arguments are passed as a
+  // list rather than interpolated into a shell string.
   let command;
+  let args;
   switch (process.platform) {
     case "win32":
-      command = `start ${url}`;
+      command = "cmd";
+      args = ["/c", "start", "", parsed.toString()];
       break;
     case "darwin":
-      command = `open ${url}`;
+      command = "open";
+      args = ["--", parsed.toString()];
       break;
     default:
-      command = `xdg-open ${url}`;
+      command = "xdg-open";
+      args = [parsed.toString()];
       break;
   }
 
-  // Execute the command
-  exec(command, (error) => {
+  execFile(command, args, (error) => {
     if (error) {
       console.error(`Failed to open browser: ${error.message}`);
     }
