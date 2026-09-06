@@ -57,6 +57,17 @@ def get_model(
 local_dir = os.path.join("data", "models", "whisper")
 local_cache_dir = os.path.join(local_dir, "cache")
 
+# `transcribe` is exposed as an api_name, so model_name arrives straight from
+# the client. from_pretrained() will happily download and load any repository,
+# and legacy .bin checkpoints are unpickled, so an unconstrained value here is
+# remote code execution. Keep this list in sync with the dropdown below.
+ALLOWED_MODELS = [
+    "openai/whisper-tiny.en",
+    "openai/whisper-small.en",
+    "openai/whisper-medium.en",
+    "openai/whisper-large-v3",
+]
+
 
 @manage_model_state("whisper-pipe")
 def get_pipe(model_name, device="cuda:0") -> "Pipeline":
@@ -90,6 +101,9 @@ def transcribe(inputs, model_name="openai/whisper-large-v3"):
             "No audio file submitted! Please record an audio before submitting your request."
         )
 
+    if model_name not in ALLOWED_MODELS:
+        raise gr.Error(f"Unsupported model: {model_name}")
+
     pipe = get_pipe(model_name)
 
     result = pipe(
@@ -113,12 +127,7 @@ def transcribe_ui():
         with gr.Column():
             audio = gr.Audio(label="Audio", type="filepath", sources="upload")
             model_dropdown = gr.Dropdown(
-                choices=[
-                    "openai/whisper-tiny.en",
-                    "openai/whisper-small.en",
-                    "openai/whisper-medium.en",
-                    "openai/whisper-large-v3",
-                ],
+                choices=ALLOWED_MODELS,
                 label="Model",
                 value="openai/whisper-large-v3",
             )
