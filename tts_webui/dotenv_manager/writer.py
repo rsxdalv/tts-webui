@@ -1,9 +1,46 @@
 import json
 import os
+import re
+
+_VALID_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _sanitize_env_name(name) -> str:
+    """Reject anything that is not a plain environment variable name."""
+    cleaned = str(name).strip()
+    if not _VALID_ENV_NAME.fullmatch(cleaned):
+        raise ValueError(f"Invalid environment variable name: {name!r}")
+    return cleaned
+
+
+def _sanitize_env_value(value) -> str:
+    """
+    Render *value* so it cannot inject additional lines into the .env file.
+
+    Values reach here from the UI. A raw newline would let a caller append
+    arbitrary variables (NODE_OPTIONS, PYTHONSTARTUP, LD_PRELOAD, ...) which
+    the app then hands to every subprocess it spawns.
+    """
+    text = "" if value is None else str(value)
+    for forbidden in ("\r", "\n", "\x00"):
+        text = text.replace(forbidden, "")
+
+    if text != text.strip() or any(char in text for char in ' #\'"'):
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+
+    return text
+
+
+def _sanitize_comment(comment) -> str:
+    return " ".join(str(comment).splitlines()).strip()
 
 
 def env_entry(name, value, comment, null_if_empty=True):
-    return f"# {comment}\n{'# ' if null_if_empty and not value else ''}{name}={value}\n"
+    safe_name = _sanitize_env_name(name)
+    safe_value = _sanitize_env_value(value)
+    prefix = "# " if null_if_empty and not value else ""
+    return f"# {_sanitize_comment(comment)}\n{prefix}{safe_name}={safe_value}\n"
 
 
 def generate_env(
