@@ -1,3 +1,5 @@
+import os
+
 # def print_pretty_options(options):
 #     print(" Gradio interface options:")
 #     max_key_length = max(len(key) for key in options.keys())
@@ -7,6 +9,9 @@
 #         else:
 #             print(f"  {key}:{' ' * (max_key_length - len(key))} {value}")
 #     print("")
+
+
+_SECRET_KEYS = {"ssl_keyfile_password", "auth", "auth_dependency"}
 
 
 def print_gradio_options(options):
@@ -69,6 +74,11 @@ def print_gradio_options(options):
         # Format each parameter as "name=value"
         formatted_params = []
         for key, value in group_params.items():
+            # Never print credentials to the console or the log file.
+            if key in _SECRET_KEYS:
+                formatted_params.append(f"{key}: {'set' if value else 'None'}")
+                continue
+
             # Format the value based on its type
             if isinstance(value, str):
                 if len(value) > 20:  # Truncate long strings
@@ -84,8 +94,18 @@ def print_gradio_options(options):
 
         print(f"  • {group_name.ljust(8)} > {', '.join(formatted_params)}")
 
-    if options["server_name"] == "0.0.0.0":
-        print("Notice: Server is open to the internet")
+    # The proxy tree, when enabled, is the actual front door. Reporting only
+    # server_name here told users they were bound to 127.0.0.1 while the tree
+    # listened elsewhere, so the exposure notice could never fire.
+    tree_port = os.environ.get("GRADIO_TREE_PORT")
+    if tree_port:
+        print(
+            f"Notice: Gradio Proxy Tree is the front door on port {tree_port}; "
+            "its bind address governs exposure, not server_name"
+        )
+
+    if options.get("server_name") == "0.0.0.0":
+        print("Notice: Server is open to the local network")
         print(
             f"Gradio server will be available on http://localhost:{options['server_port']}"
         )
