@@ -1,9 +1,21 @@
+import html
 import os
 import re
 import shlex
 import subprocess
 
 from tts_webui.utils.get_torch_command import get_torch_command
+
+
+def _as_html(lines):
+    """
+    Render console lines for a gr.HTML output.
+
+    gr.HTML does not escape, and these lines interpolate attacker-controlled
+    extension metadata (`name`) as well as pip's own echo of the requirement
+    string, so each line must be escaped before it is joined.
+    """
+    return "<br />".join(html.escape(str(line)) for line in lines)
 
 
 def write_log(output, name, type):
@@ -24,7 +36,7 @@ def pip_install_wrapper(requirements, name, include_gradio=True):
         command = f"{requirements} gradio==5.49.1" if include_gradio else requirements
         for line in _pip_install(command, name):
             output.append(str(line))
-            yield "<br />".join(output)
+            yield _as_html(output)
 
         write_log(output, name, type="pip-install")
         return line
@@ -57,7 +69,7 @@ def venv_setup_wrapper(requirements, name, package_name):
         for cmd in commands:
             for line in _stream_shell_command(cmd):
                 output.append(str(line))
-                yield "<br />".join(output)
+                yield _as_html(output)
 
         message = (
             f"\nSuccessfully set up virtual environment for {name} with dependencies\n"
@@ -77,7 +89,7 @@ def pip_uninstall_wrapper(package_name, name):
         output = []
         for line in _pip_uninstall(package_name, name):
             output.append(line)
-            yield "<br />".join(output)
+            yield _as_html(output)
 
         write_log(output, name, type="pip-uninstall")
 

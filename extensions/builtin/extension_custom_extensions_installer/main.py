@@ -1,3 +1,4 @@
+import html
 import json
 from typing import Any, Dict, List, Tuple
 
@@ -116,9 +117,14 @@ def _add_to_external(entries: List[Dict[str, Any]]) -> Tuple[str, str]:
             added.append(e.get("package_name"))
     data["tabs"] = tabs
     ok, msg = _save_external_extensions(data)
+    # This status string is rendered into a gr.HTML output and contains
+    # package names taken straight from the submitted JSON, so it is escaped.
+    def _names(values):
+        return html.escape(", ".join(str(v) for v in values)) if values else "none"
+
     status = (
-        ("Saved" if ok else msg)
-        + f" | Added: {', '.join(added) if added else 'none'} | Skipped (exists): {', '.join(skipped) if skipped else 'none'}"
+        ("Saved" if ok else html.escape(str(msg)))
+        + f" | Added: {_names(added)} | Skipped (exists): {_names(skipped)}"
     )
     return status, json.dumps(data, indent=2, ensure_ascii=False)
 
@@ -133,7 +139,10 @@ def _install_selected(entries: List[Dict[str, Any]]):
         proxy = e.get("proxy", None)
         package_name = e.get("package_name", None)
         if proxy == "native":
-            yield f"Setting up virtual environment and installing dependencies for {name}..."  # type: ignore
+            yield (
+                "Setting up virtual environment and installing dependencies "
+                f"for {html.escape(str(name))}..."
+            )
             yield from venv_setup_wrapper(requirements, name, package_name)()
         else:
             yield from pip_install_wrapper(requirements, name)()
