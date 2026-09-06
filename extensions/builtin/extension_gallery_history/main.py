@@ -10,6 +10,10 @@ from tts_webui.history_tab.collections_directories_atom import (
 from tts_webui.history_tab.delete_generation_cb import delete_generation_cb
 from tts_webui.history_tab.save_to_favorites import save_to_collection, save_to_favorites
 from tts_webui.utils.open_folder import open_folder
+from tts_webui.utils.safe_path import (
+    resolve_within,
+    safe_directory_name,
+)
 
 
 import glob
@@ -52,7 +56,10 @@ def clear_audio():
 
 
 def save_to_voices_cb(npz_filename: str):
-    shutil.copy(npz_filename, "voices/")
+    # Exposed as api_name="save_to_voices"; the path is client supplied, so an
+    # unvalidated copy here lets a caller stage any file into voices/, which is
+    # then served over HTTP.
+    shutil.copy(resolve_within(npz_filename), "voices/")
     return gr.Button(value="Saved")
 
 
@@ -237,7 +244,9 @@ def create_collection_ui(directories_state):
     new_collection_name = gr.Textbox(label="New collection name", value="")
 
     def create_collection(new_collection_name):
-        os.makedirs(os.path.join("collections", new_collection_name))
+        os.makedirs(
+            os.path.join("collections", safe_directory_name(new_collection_name))
+        )
         return [
             get_collections(),
             gr.Button(value="Created"),
