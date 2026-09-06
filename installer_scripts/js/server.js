@@ -101,9 +101,24 @@ function startServer() {
     res.end("404 Not Found");
   }
 
-  // Helper to add CORS headers for cross-origin requests from vite dev server
-  function setCorsHeaders(res) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+  // Helper to add CORS headers for cross-origin requests from vite dev server.
+  //
+  // "*" let any website the user had open read /stream-log, which carries the
+  // installer's entire stdout: paths, usernames, environment details. Only the
+  // local dev server origins are allowed.
+  const ALLOWED_ORIGINS = new Set([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:7771",
+    "http://127.0.0.1:7771",
+  ]);
+
+  function setCorsHeaders(req, res) {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+    }
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
@@ -112,13 +127,13 @@ function startServer() {
   function handleRouting(req, res) {
     // Handle preflight OPTIONS requests
     if (req.method === "OPTIONS") {
-      setCorsHeaders(res);
+      setCorsHeaders(req, res);
       res.writeHead(204);
       res.end();
       return;
     }
 
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
 
     switch(req.url) {
       case "/stream-log":
@@ -138,9 +153,11 @@ function startServer() {
   }
 
   // Create HTTP server that routes to the appropriate handler
+  // Loopback only: this streams local installer output and is not intended to
+  // be reachable from the network.
   const server = http
     .createServer(handleRouting)
-    .listen(7771);
+    .listen(7771, "127.0.0.1");
 
   const serverUrl = "http://localhost:7771";
   console.log("Unified server started on port 7771");
