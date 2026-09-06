@@ -47,5 +47,14 @@ RUN pip install "tts-webui-extension.styletts2>=0.1.0" --extra-index-url https:/
 # Build the React UI
 RUN cd react-ui && npm install && npm run build
 
+# Run as an unprivileged user. This container exposes network services and
+# executes model code, and docker-compose bind-mounts ./data, ./outputs and
+# ./favorites from the host, so running as root means any compromise writes to
+# host directories as root.
+RUN chmod -R a+rX /root \
+    && useradd --create-home --uid 1000 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Run the server
 CMD python3 server.py --docker
