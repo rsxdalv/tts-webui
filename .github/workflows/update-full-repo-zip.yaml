@@ -16,6 +16,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0 # This ensures we get the full git history
+          # Do not write the job token into .git/config. This archive is
+          # published publicly, and scrubbing the credential afterwards is
+          # best-effort at best.
+          persist-credentials: false
 
       - name: Clear git settings
         run: |
@@ -33,9 +37,17 @@ jobs:
 
       - name: Create zip file with full git history
         run: |
-          # Create a zip file containing the entire repository including .git folder
-          # zip -r tts-webui-installer.zip . -x "node_modules/*" "installer_files/*" "*.pyc" "__pycache__/*"
-          zip -r tts-webui-installer.zip .
+          # The installer needs git history to self-update, but not the
+          # credential store, hooks, or build artefacts.
+          rm -f .git/config.lock
+          zip -r tts-webui-installer.zip . \
+            -x "node_modules/*" \
+               "installer_files/*" \
+               "*.pyc" \
+               "__pycache__/*" \
+               ".git/config" \
+               ".git/hooks/*" \
+               ".git/logs/*"
 
       - name: Delete existing asset if it exists
         uses: actions/github-script@v6
