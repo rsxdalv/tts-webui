@@ -82,7 +82,26 @@ def start_gradio_server(gr_options, config):
     try:
         demo.queue().launch(
             **parsed_options,
-            allowed_paths=["."],
+            # Scope the file route to generation output directories. "." gave
+            # it the whole working directory, which is where .env, .env.user,
+            # env_store.json and config.json live.
+            allowed_paths=[
+                "outputs",
+                "favorites",
+                "voices",
+                "collections",
+                "outputs-rvc",
+                "voices-tortoise",
+                "data/models",
+            ],
+            blocked_paths=[
+                ".env",
+                ".env.user",
+                "env_store.json",
+                "config.json",
+                "extensions.external.json",
+                "data/sqlite",
+            ],
             favicon_path="./react-ui/public/favicon.ico",
             prevent_thread_lock=True,
         )
