@@ -28,9 +28,11 @@ def run_conda_command(command):
         if "CONDA_PREFIX" not in os.environ:
             return "Error: No conda environment detected. Please run this tool with conda active."
 
-        # Run the command
+        # Run the command. Passed as an argument list so no shell is involved:
+        # the helper previously took a string with shell=True, which is an easy
+        # thing to later hand a caller-supplied value.
         result = subprocess.run(
-            command, shell=True, check=True, capture_output=True, text=True
+            command, check=True, capture_output=True, text=True
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -40,11 +42,11 @@ def run_conda_command(command):
 
 
 def conda_dry_run():
-    return run_conda_command("conda clean --all --dry-run")
+    return run_conda_command(["conda", "clean", "--all", "--dry-run"])
 
 
 def conda_clean_all():
-    return run_conda_command("conda clean --all --yes")
+    return run_conda_command(["conda", "clean", "--all", "--yes"])
 
 
 def conda_storage_optimizer_ui():
